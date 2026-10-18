@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competition Application | Nexus</title>
+  <meta name="description" content="Apply for competition, enter your project pitch and submit your participation note.">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="main-navbar" id="mainNav"></nav>
+
+  <main class="container">
+    <div class="apply-view-wrapper">
+      <!-- Back Navigation Link -->
+      <div style="margin: 30px 0 20px;">
+        <a href="dashboard.html" style="color: var(--cyan); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+          ← Back to Dashboard
+        </a>
+      </div>
+
+      <!-- Loading State -->
+      <div id="applyLoading" style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 2rem; margin-bottom: 12px; animation: pulse 1.5s infinite;">⚡</div>
+        <p style="color: var(--text-muted);">Loading competition details & user application status...</p>
+      </div>
+
+      <!-- Content Container -->
+      <div id="applyContent" style="display: none;">
+        <!-- Competition Header Banner -->
+        <div class="apply-header-banner">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
+            <span class="comp-id-badge" id="badgeCompId">COMPETITION #--</span>
+            <span id="applicationStatusBadge" class="meta-chip" style="background: rgba(0, 242, 254, 0.1); color: var(--cyan);">
+              Entry Open
+            </span>
+          </div>
+
+          <h1 id="competitionTitle" style="font-size: 2.2rem; font-weight: 800; color: #fff; margin-bottom: 14px;">
+            Competition Title
+          </h1>
+          <p id="competitionDesc" style="color: var(--text-muted); font-size: 1.05rem; line-height: 1.6;">
+            Competition Description
+          </p>
+
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px;">
+            <span class="meta-chip">🌐 Global Arena</span>
+            <span class="meta-chip">👥 Individual / Team</span>
+            <span class="meta-chip">⚡ Verified Participant Required</span>
+          </div>
+        </div>
+
+        <!-- Auth Guard Notice (If guest) -->
+        <div id="guestNotice" class="verification-card unregistered" style="display: none; margin-bottom: 30px;">
+          <div class="verification-info">
+            <h4>⚠️ Sign In Required to Apply</h4>
+            <p>You must be registered in the Nexus database to record your participation note.</p>
+          </div>
+          <a id="loginRedirectBtn" href="auth.html" class="btn btn-primary btn-sm">
+            Sign In / Register →
+          </a>
+        </div>
+
+        <!-- Application Form Card -->
+        <div class="glass-card" id="formCard">
+          <h2 style="font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+            Submit Participation Application
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">
+            Your application will be stored in the <code>public.participation</code> database table for authorized admin review.
+          </p>
+
+          <!-- Applicant User Summary -->
+          <div class="user-summary-box">
+            <div>
+              <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px;">Applicant Name</div>
+              <div id="applicantName" style="font-size: 1rem; font-weight: 700; color: var(--text-white);">-</div>
+            </div>
+            <div>
+              <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px;">Email Address</div>
+              <div id="applicantEmail" style="font-size: 0.95rem; color: var(--cyan);">-</div>
+            </div>
+            <div>
+              <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px;">Phone Number</div>
+              <div id="applicantPhone" style="font-size: 0.95rem; color: var(--text-muted);">-</div>
+            </div>
+          </div>
+
+          <!-- The Note Form -->
+          <form id="applicationForm" onsubmit="submitApplication(event)">
+            <div class="form-group">
+              <label class="form-label" for="participationNote">
+                Project Proposal & Pitch Note <span class="req">*</span>
+              </label>
+              <p style="font-size: 0.82rem; color: var(--text-dim); margin-bottom: 8px;">
+                Describe your project vision, proposed architecture, technology stack, repository links, or any special notes for the judging panel.
+              </p>
+              <textarea 
+                id="participationNote" 
+                class="input-control" 
+                placeholder="Example: We are building an autonomous telemetry processor leveraging LLMs and real-time WebSockets. Tech stack: Python, Supabase, PyTorch. GitHub: https://github.com/..." 
+                required
+                style="min-height: 180px; font-family: var(--font-sans);"
+              ></textarea>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div style="display: flex; gap: 14px; align-items: center; justify-content: flex-end; margin-top: 24px;">
+              <a href="dashboard.html" class="btn btn-outline">Cancel</a>
+              <button type="submit" id="submitBtn" class="btn btn-primary glow-btn">
+                Confirm & Submit Application →
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Submission Confirmation Modal / Box -->
+        <div id="successBox" class="glass-card" style="display: none; border-color: var(--emerald); text-align: center; padding: 40px 24px; margin-top: 30px;">
+          <div style="font-size: 3rem; margin-bottom: 12px; color: var(--emerald);">✓</div>
+          <h2 style="font-size: 1.6rem; color: #fff; margin-bottom: 8px;">Application Recorded Successfully!</h2>
+          <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 24px;">
+            Your participation record and note have been saved to the database. The competition administrators can now review your submission.
+          </p>
+          <div style="display: flex; justify-content: center; gap: 16px;">
+            <a href="dashboard.html" class="btn btn-primary">Return to Dashboard</a>
+            <a href="admin.html" class="btn btn-outline">View in Admin Portal</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="container footer-content">
+      <div>
+        <strong>NEXUS COMPETITION APPLICATION</strong> — Integrated with Supabase
+      </div>
+      <div>
+        <a href="dashboard.html" style="color: var(--text-muted); text-decoration: none;">Dashboard</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    let currentCompId = null;
+    let currentUser = null;
+    let currentProfile = null;
+
+    async function initApplyPage() {
+      await initNavbar();
+
+      // 1. Get competition ID from URL
+      const params = new URLSearchParams(window.location.search);
+      currentCompId = params.get('id');
+
+      if (!currentCompId) {
+        showToast('No competition selected. Redirecting to dashboard...', 'warning');
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1500);
+        return;
+      }
+
+      // 2. Fetch Competition Details
+      const comp = await getCompetitionById(currentCompId);
+      if (!comp) {
+        showToast('Competition not found. Redirecting...', 'error');
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1500);
+        return;
+      }
+
+      // Populate UI with competition info
+      document.getElementById('badgeCompId').innerText = `COMPETITION #${comp.competition_id}`;
+      document.getElementById('competitionTitle').innerText = comp.competition_name;
+      document.getElementById('competitionDesc').innerText = comp.description;
+
+      // 3. Check User Auth
+      currentUser = await getCurrentUser();
+      const guestNotice = document.getElementById('guestNotice');
+      const formCard = document.getElementById('formCard');
+      const loginRedirectBtn = document.getElementById('loginRedirectBtn');
+
+      if (!currentUser) {
+        // Guest mode
+        guestNotice.style.display = 'flex';
+        loginRedirectBtn.href = `auth.html?mode=login&redirect=${encodeURIComponent(window.location.href)}`;
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').innerText = 'Sign In to Submit';
+        document.getElementById('applicantName').innerText = 'Unregistered Guest';
+        document.getElementById('applicantEmail').innerText = 'Please log in';
+        document.getElementById('applicantPhone').innerText = 'N/A';
+      } else {
+        // Authenticated user
+        guestNotice.style.display = 'none';
+        currentProfile = await getUserProfile(currentUser.id);
+        const displayName = currentProfile && currentProfile.name ? currentProfile.name : currentUser.email.split('@')[0];
+        const displayPhone = currentProfile && currentProfile.phone_no ? currentProfile.phone_no : 'Not specified';
+
+        document.getElementById('applicantName').innerText = displayName;
+        document.getElementById('applicantEmail').innerText = currentUser.email;
+        document.getElementById('applicantPhone').innerText = displayPhone;
+
+        // Check if user has already applied
+        try {
+          const participations = await getUserParticipations(currentUser.id);
+          const existing = participations.find(p => p.competition_id === parseInt(currentCompId, 10));
+
+          if (existing) {
+            document.getElementById('applicationStatusBadge').innerHTML = '✓ Previously Applied';
+            document.getElementById('applicationStatusBadge').style.color = 'var(--emerald)';
+            document.getElementById('participationNote').value = existing.note || '';
+            document.getElementById('submitBtn').innerText = 'Update Application Note →';
+            showToast('You previously applied for this competition. You can update your note below.', 'info');
+          }
+        } catch (e) {
+          console.warn('Check existing participation warning:', e);
+        }
+      }
+
+      document.getElementById('applyLoading').style.display = 'none';
+      document.getElementById('applyContent').style.display = 'block';
+    }
+
+    async function submitApplication(e) {
+      e.preventDefault();
+
+      if (!currentUser) {
+        showToast('Please sign in first to submit your application', 'warning');
+        window.location.href = `auth.html?mode=login&redirect=${encodeURIComponent(window.location.href)}`;
+        return;
+      }
+
+      const note = document.getElementById('participationNote').value.trim();
+      if (!note) {
+        showToast('Please enter a proposal pitch or note', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerText = 'Submitting to database...';
+
+      try {
+        await applyToCompetition(currentUser.id, currentCompId, note);
+        showToast('Application successfully submitted!', 'success');
+
+        document.getElementById('formCard').style.display = 'none';
+        document.getElementById('successBox').style.display = 'block';
+        document.getElementById('applicationStatusBadge').innerHTML = '✓ Submitted';
+        document.getElementById('applicationStatusBadge').style.color = 'var(--emerald)';
+      } catch (err) {
+        console.error('Submission error:', err);
+        showToast(err.message || 'Error saving application to database', 'error');
+        btn.disabled = false;
+        btn.innerText = 'Confirm & Submit Application →';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initApplyPage);
+  </script>
+</body>
+</html>

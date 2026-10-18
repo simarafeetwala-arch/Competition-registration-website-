@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication | Nexus Competitions</title>
+  <meta name="description" content="Sign in or register for an account to enter global hackathons and competitions.">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="main-navbar" id="mainNav"></nav>
+
+  <main class="container">
+    <div class="auth-wrapper">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div style="font-size: 2.2rem; margin-bottom: 8px;">⚡</div>
+          <h1 id="authTitle" style="font-size: 1.7rem; font-weight: 800; color: #fff;">Participant Portal</h1>
+          <p id="authSubtitle" style="color: var(--text-muted); font-size: 0.9rem;">Sign in to your account or create a new profile</p>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthMode('login')">
+            Sign In
+          </button>
+          <button type="button" class="auth-tab" id="tabRegister" onclick="switchAuthMode('register')">
+            Create Account
+          </button>
+        </div>
+
+        <!-- Sign In Form -->
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Email Address <span class="req">*</span></label>
+            <input type="email" id="loginEmail" class="input-control" placeholder="name@domain.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password <span class="req">*</span></label>
+            <input type="password" id="loginPassword" class="input-control" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            Sign In to Dashboard →
+          </button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" onsubmit="handleRegister(event)" style="display: none;">
+          <div class="form-group">
+            <label class="form-label" for="regName">Full Name <span class="req">*</span></label>
+            <input type="text" id="regName" class="input-control" placeholder="Jane Doe" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regEmail">Email Address <span class="req">*</span></label>
+            <input type="email" id="regEmail" class="input-control" placeholder="jane@example.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regPhone">Phone Number</label>
+            <input type="tel" id="regPhone" class="input-control" placeholder="+1 (555) 019-2834" autocomplete="tel">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password <span class="req">*</span></label>
+            <input type="password" id="regPassword" class="input-control" placeholder="Minimum 6 characters" minlength="6" required autocomplete="new-password">
+          </div>
+          <button type="submit" id="regSubmitBtn" class="btn btn-primary glow-btn" style="width: 100%; margin-top: 10px;">
+            Complete Registration & Verify →
+          </button>
+        </form>
+
+        <!-- Footer helper links -->
+        <div style="margin-top: 24px; text-align: center; border-top: 1px solid var(--border-glass); padding-top: 18px;">
+          <p id="authSwitchNote" style="font-size: 0.88rem; color: var(--text-muted);">
+            Don't have an account yet? 
+            <a href="javascript:void(0)" onclick="switchAuthMode('register')" style="color: var(--cyan); font-weight: 600;">Register here</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    let currentMode = 'login';
+
+    function switchAuthMode(mode) {
+      currentMode = mode;
+      const tabLogin = document.getElementById('tabLogin');
+      const tabRegister = document.getElementById('tabRegister');
+      const loginForm = document.getElementById('loginForm');
+      const registerForm = document.getElementById('registerForm');
+      const authTitle = document.getElementById('authTitle');
+      const authSubtitle = document.getElementById('authSubtitle');
+      const authSwitchNote = document.getElementById('authSwitchNote');
+
+      if (mode === 'login') {
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+        authTitle.innerText = 'Welcome Back';
+        authSubtitle.innerText = 'Sign in to access competitions and submit notes';
+        authSwitchNote.innerHTML = `Don't have an account yet? <a href="javascript:void(0)" onclick="switchAuthMode('register')" style="color: var(--cyan); font-weight: 600;">Register here</a>`;
+      } else {
+        tabRegister.classList.add('active');
+        tabLogin.classList.remove('active');
+        registerForm.style.display = 'block';
+        loginForm.style.display = 'none';
+        authTitle.innerText = 'Participant Registration';
+        authSubtitle.innerText = 'Create your profile to compete in official challenges';
+        authSwitchNote.innerHTML = `Already registered? <a href="javascript:void(0)" onclick="switchAuthMode('login')" style="color: var(--cyan); font-weight: 600;">Sign in here</a>`;
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('loginSubmitBtn');
+
+      if (!email || !password) {
+        showToast('Please fill in both email and password', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Verifying credentials...';
+
+      try {
+        await signInUser(email, password);
+        showToast('Successfully signed in! Redirecting...', 'success');
+        
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect') || 'dashboard.html';
+        setTimeout(() => {
+          window.location.href = redirect;
+        }, 800);
+      } catch (err) {
+        console.error('Login error:', err);
+        showToast(err.message || 'Invalid email or password', 'error');
+        btn.disabled = false;
+        btn.innerText = 'Sign In to Dashboard →';
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const btn = document.getElementById('regSubmitBtn');
+
+      if (!name || !email || !password) {
+        showToast('Please provide your name, email, and password', 'warning');
+        return;
+      }
+
+      if (password.length < 6) {
+        showToast('Password must be at least 6 characters long', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Creating account & registering in database...';
+
+      try {
+        const result = await signUpUser(name, email, password, phone);
+        showToast('Account created and registered successfully!', 'success');
+        
+        // Auto sign in or redirect
+        setTimeout(async () => {
+          // If session was granted immediately
+          if (result.session) {
+            const params = new URLSearchParams(window.location.search);
+            const redirect = params.get('redirect') || 'dashboard.html';
+            window.location.href = redirect;
+          } else {
+            // If email confirmation is required or standard login needed
+            showToast('Account created! Please sign in with your credentials.', 'info');
+            switchAuthMode('login');
+            document.getElementById('loginEmail').value = email;
+            btn.disabled = false;
+            btn.innerText = 'Complete Registration & Verify →';
+          }
+        }, 1000);
+      } catch (err) {
+        console.error('Registration error:', err);
+        showToast(err.message || 'Registration failed. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerText = 'Complete Registration & Verify →';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initNavbar();
+
+      // Check if user is already logged in
+      const user = await getCurrentUser();
+      if (user) {
+        showToast('You are already signed in.', 'info');
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect') || 'dashboard.html';
+        window.location.href = redirect;
+        return;
+      }
+
+      // Check query parameter for mode
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'register') {
+        switchAuthMode('register');
+      }
+    });
+  </script>
+</body>
+</html>

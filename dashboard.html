@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competition Dashboard | Nexus</title>
+  <meta name="description" content="Search, filter, and apply for cutting-edge technology competitions and innovation hackathons.">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="main-navbar" id="mainNav"></nav>
+
+  <main class="container">
+    <!-- User Welcome Header -->
+    <section style="margin: 40px 0 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
+        <div>
+          <div class="badge-pill">
+            <span class="pulse-dot"></span>
+            <span>Live Competitions Catalog</span>
+          </div>
+          <h1 style="font-size: 2.4rem; font-weight: 800; color: #fff; margin-bottom: 8px;">
+            Competition Arena Dashboard
+          </h1>
+          <p id="userGreeting" style="color: var(--text-muted); font-size: 1.05rem;">
+            Explore official challenges, filter by domain, and submit your application note.
+          </p>
+        </div>
+
+        <!-- Quick User Status Card -->
+        <div id="userStatusCard" class="glass-card" style="padding: 16px 22px; min-width: 260px;">
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Participant Status</div>
+          <div id="userStatusName" style="font-size: 1.1rem; font-weight: 700; color: var(--cyan); margin: 4px 0;">Guest User</div>
+          <div id="userStatusEmail" style="font-size: 0.85rem; color: var(--text-dim);">Not authenticated</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search & Top-Down Select Filter Bar -->
+    <section class="filter-bar">
+      <!-- Search Input -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="input-control" 
+          placeholder="Search competition by title or keyword..."
+          oninput="handleSearchFilter()"
+        >
+      </div>
+
+      <!-- Top-down Dropdown List for Selecting Competition -->
+      <div class="topdown-select-wrapper">
+        <select id="competitionSelect" class="select-control" onchange="handleTopDownSelect()">
+          <option value="">▼ Select from Competition List (All)</option>
+          <!-- 10-15 competitions populated here -->
+        </select>
+        <button id="quickApplyBtn" class="btn btn-primary btn-sm" onclick="applyFromTopDownSelect()" title="Apply to selected competition">
+          Apply Now →
+        </button>
+      </div>
+
+      <!-- Reset Filter Button -->
+      <div>
+        <button class="btn btn-outline btn-sm" onclick="resetFilters()">Reset</button>
+      </div>
+    </section>
+
+    <!-- Category Filter Chips -->
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 25px;">
+      <button class="meta-chip category-chip active" style="cursor: pointer; background: rgba(0, 242, 254, 0.15); color: var(--cyan); border-color: rgba(0, 242, 254, 0.3);" onclick="filterByCategory('all', this)">
+        All Categories (<span id="totalCountBadge">0</span>)
+      </button>
+      <button class="meta-chip category-chip" style="cursor: pointer;" onclick="filterByCategory('AI', this)">
+        🤖 AI & Vision
+      </button>
+      <button class="meta-chip category-chip" style="cursor: pointer;" onclick="filterByCategory('Security', this)">
+        🛡️ Cybersecurity
+      </button>
+      <button class="meta-chip category-chip" style="cursor: pointer;" onclick="filterByCategory('Quantum', this)">
+        ⚛️ Quantum & Hardware
+      </button>
+      <button class="meta-chip category-chip" style="cursor: pointer;" onclick="filterByCategory('FinTech', this)">
+        📈 FinTech & Trading
+      </button>
+    </div>
+
+    <!-- Active User Participations Section -->
+    <section id="myApplicationsSection" style="display: none; margin-bottom: 40px;">
+      <div class="glass-card" style="border-left: 4px solid var(--emerald); padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff;">My Submitted Applications</h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">Competitions you have applied to with your notes recorded in the database.</p>
+          </div>
+          <span id="myAppCountBadge" class="comp-id-badge" style="background: rgba(0, 245, 160, 0.15); color: var(--emerald); border-color: rgba(0, 245, 160, 0.3);">
+            0 Applied
+          </span>
+        </div>
+        <div id="myApplicationsList" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Competition Cards Grid (10 - 15 Competitions) -->
+    <section>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="font-size: 1.5rem; font-weight: 700; color: #fff;">
+          Available Competitions
+          <span id="resultCount" style="font-size: 0.95rem; font-weight: 400; color: var(--text-dim); margin-left: 8px;"></span>
+        </h2>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingIndicator" style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 2rem; margin-bottom: 12px; animation: pulse 1.5s infinite;">⚡</div>
+        <p style="color: var(--text-muted);">Fetching competition list from Supabase...</p>
+      </div>
+
+      <!-- Cards Grid -->
+      <div id="competitionsGrid" class="competitions-grid" style="display: none;">
+        <!-- Populated via JavaScript -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="glass-card" style="display: none; text-align: center; padding: 50px 20px;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">🔍</div>
+        <h3 style="font-size: 1.2rem; color: #fff; margin-bottom: 8px;">No competitions match your search</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Try clearing your search terms or selecting from the top-down list.</p>
+        <button class="btn btn-outline btn-sm" onclick="resetFilters()">Reset All Filters</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="container footer-content">
+      <div>
+        <strong>NEXUS COMPETITION DASHBOARD</strong> — Supabase Database Integration
+      </div>
+      <div>
+        <a href="index.html" style="color: var(--text-muted); margin-right: 15px; text-decoration: none;">Home</a>
+        <a href="competition.html" style="color: var(--text-muted); margin-right: 15px; text-decoration: none;">Apply Page</a>
+        <a href="admin.html" style="color: var(--text-muted); text-decoration: none;">Admin</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    let allCompetitions = [];
+    let userAppliedCompIds = new Set();
+    let currentCategory = 'all';
+
+    async function loadDashboard() {
+      // 1. Navbar
+      await initNavbar();
+
+      // 2. Auth State Check & User Profile
+      const user = await getCurrentUser();
+      const userStatusName = document.getElementById('userStatusName');
+      const userStatusEmail = document.getElementById('userStatusEmail');
+      const userGreeting = document.getElementById('userGreeting');
+
+      if (user) {
+        const profile = await getUserProfile(user.id);
+        const name = profile && profile.name ? profile.name : user.email.split('@')[0];
+        userStatusName.innerText = name;
+        userStatusEmail.innerText = user.email;
+        userGreeting.innerHTML = `Welcome back, <strong>${name}</strong>! Choose an arena below and click <strong>Apply</strong> to submit your proposal note.`;
+
+        // Load User's Previous Participations
+        await loadUserParticipations(user.id);
+      } else {
+        userStatusName.innerHTML = `<span style="color: var(--amber);">Guest (Unverified)</span>`;
+        userStatusEmail.innerHTML = `<a href="auth.html?mode=login" style="color: var(--cyan); text-decoration: underline;">Sign In to Apply</a>`;
+      }
+
+      // 3. Fetch Competitions (10 - 15 items)
+      try {
+        allCompetitions = await getCompetitions();
+        document.getElementById('loadingIndicator').style.display = 'none';
+        document.getElementById('competitionsGrid').style.display = 'grid';
+        document.getElementById('totalCountBadge').innerText = allCompetitions.length;
+
+        // Populate Top-Down Select Dropdown
+        populateTopDownSelect(allCompetitions);
+
+        // Render Cards Grid
+        renderCompetitions(allCompetitions);
+      } catch (err) {
+        console.error('Error loading competitions:', err);
+        showToast('Failed to load competitions list', 'error');
+        document.getElementById('loadingIndicator').style.display = 'none';
+      }
+    }
+
+    async function loadUserParticipations(uid) {
+      try {
+        const participations = await getUserParticipations(uid);
+        if (participations && participations.length > 0) {
+          userAppliedCompIds = new Set(participations.map(p => p.competition_id));
+          
+          const section = document.getElementById('myApplicationsSection');
+          const list = document.getElementById('myApplicationsList');
+          const badge = document.getElementById('myAppCountBadge');
+
+          section.style.display = 'block';
+          badge.innerText = `${participations.length} Applied`;
+
+          list.innerHTML = participations.map(p => {
+            const comp = p.competitions || {};
+            const compName = comp.competition_name || `Competition #${p.competition_id}`;
+            const noteSnippet = p.note ? (p.note.length > 100 ? p.note.substring(0, 100) + '...' : p.note) : 'No note attached';
+
+            return `
+              <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <div style="font-weight: 700; color: #fff; font-size: 0.98rem;">${compName}</div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+                    <strong style="color: var(--cyan);">Your Note:</strong> "${noteSnippet}"
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <span class="applied-badge">✓ Submitted</span>
+                  <a href="competition.html?id=${p.competition_id}" class="btn btn-outline btn-sm">Edit Note / View</a>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.warn('Could not load user participations:', e);
+      }
+    }
+
+    function populateTopDownSelect(comps) {
+      const select = document.getElementById('competitionSelect');
+      select.innerHTML = '<option value="">▼ Select from Competition List (' + comps.length + ' Available)</option>';
+      
+      comps.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.competition_id;
+        opt.textContent = `#${c.competition_id} — ${c.competition_name}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderCompetitions(comps) {
+      const grid = document.getElementById('competitionsGrid');
+      const emptyState = document.getElementById('emptyState');
+      const resultCount = document.getElementById('resultCount');
+
+      resultCount.innerText = `(${comps.length} competitions)`;
+
+      if (comps.length === 0) {
+        grid.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      grid.style.display = 'grid';
+
+      grid.innerHTML = comps.map(c => {
+        const isApplied = userAppliedCompIds.has(c.competition_id);
+        const appliedBadgeHtml = isApplied 
+          ? `<span class="applied-badge">✓ Applied</span>`
+          : `<span style="font-size: 0.82rem; color: var(--text-dim);">Open</span>`;
+
+        const applyBtnText = isApplied ? 'View / Update Note' : 'Apply Now →';
+        const btnClass = isApplied ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm glow-btn';
+
+        return `
+          <div class="comp-card" id="comp-card-${c.competition_id}">
+            <div>
+              <div class="comp-header">
+                <span class="comp-id-badge">CHALLENGE #${c.competition_id}</span>
+                ${appliedBadgeHtml}
+              </div>
+              <h3 class="comp-title">${c.competition_name}</h3>
+              <p class="comp-desc">${c.description}</p>
+            </div>
+            
+            <div>
+              <div class="comp-meta">
+                <span class="meta-chip">🏆 Official Track</span>
+                <span class="meta-chip">Global Eligibility</span>
+                <span class="meta-chip">Verified Entry</span>
+              </div>
+              <div class="comp-actions">
+                <a href="competition.html?id=${c.competition_id}" class="${btnClass}">
+                  ${applyBtnText}
+                </a>
+                <button class="btn btn-outline btn-sm" onclick="selectInTopDown(${c.competition_id})">
+                  Select
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Top-down select interaction
+    function handleTopDownSelect() {
+      const select = document.getElementById('competitionSelect');
+      const compId = select.value;
+      if (!compId) {
+        renderCompetitions(allCompetitions);
+        return;
+      }
+
+      const filtered = allCompetitions.filter(c => c.competition_id === parseInt(compId, 10));
+      renderCompetitions(filtered);
+
+      // Scroll to card
+      const targetCard = document.getElementById(`comp-card-${compId}`);
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetCard.style.borderColor = 'var(--cyan)';
+        targetCard.style.boxShadow = '0 0 25px rgba(0, 242, 254, 0.4)';
+      }
+    }
+
+    function selectInTopDown(id) {
+      const select = document.getElementById('competitionSelect');
+      select.value = id;
+      handleTopDownSelect();
+      showToast(`Selected Competition #${id} in top-down list`, 'info');
+    }
+
+    function applyFromTopDownSelect() {
+      const select = document.getElementById('competitionSelect');
+      const compId = select.value;
+      if (!compId) {
+        showToast('Please pick a competition from the top-down list first', 'warning');
+        return;
+      }
+      // Redirect to competition application page
+      window.location.href = `competition.html?id=${compId}`;
+    }
+
+    // Search filter
+    function handleSearchFilter() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      let results = allCompetitions;
+
+      if (query) {
+        results = results.filter(c => 
+          c.competition_name.toLowerCase().includes(query) ||
+          (c.description && c.description.toLowerCase().includes(query)) ||
+          c.competition_id.toString().includes(query)
+        );
+      }
+
+      if (currentCategory !== 'all') {
+        results = results.filter(c => matchesCategory(c, currentCategory));
+      }
+
+      renderCompetitions(results);
+    }
+
+    function filterByCategory(cat, btnElement) {
+      currentCategory = cat;
+      document.querySelectorAll('.category-chip').forEach(b => {
+        b.style.background = 'rgba(255, 255, 255, 0.04)';
+        b.style.color = 'var(--text-muted)';
+        b.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+      });
+
+      if (btnElement) {
+        btnElement.style.background = 'rgba(0, 242, 254, 0.15)';
+        btnElement.style.color = 'var(--cyan)';
+        btnElement.style.borderColor = 'rgba(0, 242, 254, 0.3)';
+      }
+
+      handleSearchFilter();
+    }
+
+    function matchesCategory(comp, cat) {
+      const text = `${comp.competition_name} ${comp.description}`.toLowerCase();
+      if (cat === 'AI') return text.includes('ai') || text.includes('vision') || text.includes('llm') || text.includes('intelligence');
+      if (cat === 'Security') return text.includes('security') || text.includes('ctf') || text.includes('cyber');
+      if (cat === 'Quantum') return text.includes('quantum') || text.includes('hardware') || text.includes('drone') || text.includes('robot');
+      if (cat === 'FinTech') return text.includes('fintech') || text.includes('trading') || text.includes('financial');
+      return true;
+    }
+
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('competitionSelect').value = '';
+      currentCategory = 'all';
+      renderCompetitions(allCompetitions);
+      showToast('Filters cleared', 'info');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+</body>
+</html>

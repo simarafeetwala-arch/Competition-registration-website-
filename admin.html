@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal | Nexus Competitions</title>
+  <meta name="description" content="Authorized administration portal for reviewing participant applications, competition notes, and system records.">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="main-navbar" id="mainNav"></nav>
+
+  <main class="container">
+    <!-- Authorization Lock Screen (If not authorized) -->
+    <div id="adminLockScreen" class="admin-lock-banner glass-card" style="display: none;">
+      <div style="font-size: 3rem; margin-bottom: 16px;">🔒</div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 8px;">
+        Restricted Administrator Access
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">
+        This portal contains sensitive participant records and application notes. Please authenticate with administrator credentials or enter the admin master passkey.
+      </p>
+
+      <form id="passkeyForm" onsubmit="unlockWithPasscode(event)" style="max-width: 360px; margin: 0 auto 20px;">
+        <div class="form-group">
+          <label class="form-label" for="adminPasscode">Admin Master Key / Passcode</label>
+          <input type="password" id="adminPasscode" class="input-control" placeholder="Enter Admin Passcode" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          Authorize Access →
+        </button>
+      </form>
+
+      <div style="margin-top: 16px;">
+        <span style="font-size: 0.85rem; color: var(--text-dim);">
+          (Default development passkey: <code style="color: var(--cyan);">ADMIN2026</code>)
+        </span>
+      </div>
+    </div>
+
+    <!-- Authorized Admin Dashboard View -->
+    <div id="adminDashboardView" style="display: none;">
+      <!-- Admin Header -->
+      <div class="admin-header">
+        <div>
+          <div class="badge-pill" style="border-color: rgba(157, 78, 221, 0.4); background: rgba(157, 78, 221, 0.1); color: #d8b4fe;">
+            <span>🛡️ Authorized Access Verified</span>
+          </div>
+          <h1 style="font-size: 2.2rem; font-weight: 800; color: #fff; margin-bottom: 6px;">
+            Participant Applications & Review
+          </h1>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">
+            Real-time feed of candidate submissions from <code>public.participation</code>, joined with <code>public.users</code> and <code>public.competitions</code>.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-purple btn-sm" onclick="openAddCompModal()">
+            + Add New Competition
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportToCSV()">
+            📥 Export CSV
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="refreshAdminData()">
+            🔄 Refresh
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="lockAdminSession()">
+            Lock Portal
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <section class="stats-grid" style="margin: 24px 0 32px;">
+        <div class="stat-item">
+          <div class="stat-number" id="statTotalApps">0</div>
+          <div class="stat-label">Total Submissions</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" id="statUniqueUsers">0</div>
+          <div class="stat-label">Unique Applicants</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" id="statTotalComps">0</div>
+          <div class="stat-label">Total Competitions</div>
+        </div>
+      </section>
+
+      <!-- Filter and Search Bar -->
+      <section class="filter-bar" style="margin-bottom: 24px;">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="adminSearchInput" 
+            class="input-control" 
+            placeholder="Search by User Name, Email, or Note content..."
+            oninput="filterAdminTable()"
+          >
+        </div>
+
+        <div class="topdown-select-wrapper" style="min-width: 280px;">
+          <select id="adminCompFilter" class="select-control" onchange="filterAdminTable()">
+            <option value="">All Competitions</option>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </section>
+
+      <!-- Applications Table -->
+      <div class="table-wrapper">
+        <table class="custom-table" id="adminTable">
+          <thead>
+            <tr>
+              <th style="width: 70px;">#ID</th>
+              <th style="width: 220px;">User Name</th>
+              <th style="width: 200px;">Contact Details</th>
+              <th style="width: 250px;">Competition Name</th>
+              <th>Applicant Note</th>
+              <th style="width: 100px; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="adminEmptyState" class="glass-card" style="display: none; text-align: center; padding: 60px 20px; margin-top: 20px;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">📋</div>
+        <h3 style="font-size: 1.2rem; color: #fff; margin-bottom: 8px;">No participation records found</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          No candidates have submitted an application matching the selected filters yet.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add Competition Modal -->
+  <div id="addCompModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div class="auth-card" style="max-width: 550px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 1.3rem; font-weight: 700; color: #fff;">Add New Competition</h3>
+        <button style="background:none; border:none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer;" onclick="closeAddCompModal()">✕</button>
+      </div>
+
+      <form id="newCompForm" onsubmit="handleCreateCompetition(event)">
+        <div class="form-group">
+          <label class="form-label" for="newCompName">Competition Name <span class="req">*</span></label>
+          <input type="text" id="newCompName" class="input-control" placeholder="e.g. NextGen Web3 Scalability Cup" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="newCompDesc">Description <span class="req">*</span></label>
+          <textarea id="newCompDesc" class="input-control" placeholder="Detailed prompt and evaluation guidelines..." required style="min-height: 120px;"></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline" onclick="closeAddCompModal()">Cancel</button>
+          <button type="submit" id="saveCompBtn" class="btn btn-primary">Save to Database</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="container footer-content">
+      <div>
+        <strong>NEXUS ADMIN PORTAL</strong> — Authorized Personnel Only
+      </div>
+      <div>
+        <a href="dashboard.html" style="color: var(--text-muted); text-decoration: none;">Dashboard</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    let allParticipations = [];
+    let competitionsList = [];
+
+    async function initAdmin() {
+      await initNavbar();
+
+      const authorized = await isAuthorizedAdmin();
+      if (!authorized) {
+        document.getElementById('adminLockScreen').style.display = 'block';
+        document.getElementById('adminDashboardView').style.display = 'none';
+        return;
+      }
+
+      // If authorized, reveal dashboard
+      document.getElementById('adminLockScreen').style.display = 'none';
+      document.getElementById('adminDashboardView').style.display = 'block';
+
+      await loadAdminData();
+    }
+
+    async function unlockWithPasscode(e) {
+      e.preventDefault();
+      const code = document.getElementById('adminPasscode').value.trim();
+
+      if (code === SUPABASE_CONFIG.adminPasscode) {
+        sessionStorage.setItem('admin_session_auth', 'true');
+        showToast('Admin access granted!', 'success');
+        document.getElementById('adminLockScreen').style.display = 'none';
+        document.getElementById('adminDashboardView').style.display = 'block';
+        await loadAdminData();
+      } else {
+        showToast('Invalid administrator passcode', 'error');
+      }
+    }
+
+    function lockAdminSession() {
+      sessionStorage.removeItem('admin_session_auth');
+      showToast('Admin session locked', 'info');
+      document.getElementById('adminDashboardView').style.display = 'none';
+      document.getElementById('adminLockScreen').style.display = 'block';
+    }
+
+    async function loadAdminData() {
+      try {
+        // Fetch competitions and applications simultaneously
+        const [comps, parts] = await Promise.all([
+          getCompetitions(),
+          getAllParticipationsWithDetails()
+        ]);
+
+        competitionsList = comps || [];
+        allParticipations = parts || [];
+
+        // Update stats
+        document.getElementById('statTotalApps').innerText = allParticipations.length;
+        document.getElementById('statTotalComps').innerText = competitionsList.length;
+        
+        const uniqueUids = new Set(allParticipations.map(p => p.uid));
+        document.getElementById('statUniqueUsers').innerText = uniqueUids.size;
+
+        // Populate competition filter dropdown
+        populateAdminCompFilter(competitionsList);
+
+        // Render table
+        renderAdminTable(allParticipations);
+      } catch (err) {
+        console.error('Error loading admin records:', err);
+        showToast('Failed to load records from Supabase', 'error');
+      }
+    }
+
+    function populateAdminCompFilter(comps) {
+      const select = document.getElementById('adminCompFilter');
+      select.innerHTML = '<option value="">All Competitions</option>';
+      comps.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.competition_id;
+        opt.textContent = `#${c.competition_id} — ${c.competition_name}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderAdminTable(records) {
+      const tbody = document.getElementById('adminTableBody');
+      const empty = document.getElementById('adminEmptyState');
+      const table = document.getElementById('adminTable');
+
+      if (!records || records.length === 0) {
+        tbody.innerHTML = '';
+        table.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      table.style.display = 'table';
+
+      tbody.innerHTML = records.map(item => `
+        <tr>
+          <td>
+            <span class="comp-id-badge">#${item.id}</span>
+          </td>
+          <td>
+            <div style="font-weight: 700; color: #fff;">${item.userName}</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 4px;">
+              ${item.uid ? item.uid.substring(0, 13) + '...' : ''}
+            </div>
+          </td>
+          <td>
+            <div style="color: var(--cyan); font-size: 0.88rem;">${item.userEmail}</div>
+            <div style="color: var(--text-muted); font-size: 0.82rem; margin-top: 2px;">📞 ${item.userPhone || 'N/A'}</div>
+          </td>
+          <td>
+            <div style="font-weight: 600; color: #fff;">${item.competitionName}</div>
+            <span class="meta-chip" style="margin-top: 6px; display: inline-block;">Comp ID #${item.competitionId}</span>
+          </td>
+          <td>
+            <div class="note-box">${escapeHtml(item.note)}</div>
+          </td>
+          <td style="text-align: right;">
+            <a href="competition.html?id=${item.competitionId}" class="btn btn-outline btn-sm" title="View Competition Page">
+              View
+            </a>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function filterAdminTable() {
+      const query = document.getElementById('adminSearchInput').value.toLowerCase().trim();
+      const compId = document.getElementById('adminCompFilter').value;
+
+      let filtered = allParticipations;
+
+      if (compId) {
+        filtered = filtered.filter(p => p.competitionId.toString() === compId.toString());
+      }
+
+      if (query) {
+        filtered = filtered.filter(p => 
+          (p.userName && p.userName.toLowerCase().includes(query)) ||
+          (p.userEmail && p.userEmail.toLowerCase().includes(query)) ||
+          (p.competitionName && p.competitionName.toLowerCase().includes(query)) ||
+          (p.note && p.note.toLowerCase().includes(query))
+        );
+      }
+
+      renderAdminTable(filtered);
+    }
+
+    async function refreshAdminData() {
+      showToast('Refreshing database records...', 'info');
+      await loadAdminData();
+      showToast('Data refreshed!', 'success');
+    }
+
+    function exportToCSV() {
+      if (allParticipations.length === 0) {
+        showToast('No records to export', 'warning');
+        return;
+      }
+
+      let csv = 'Participation ID,User UID,User Name,User Email,User Phone,Competition ID,Competition Name,Applicant Note\n';
+      allParticipations.forEach(r => {
+        const row = [
+          r.id,
+          `"${r.uid}"`,
+          `"${(r.userName || '').replace(/"/g, '""')}"`,
+          `"${(r.userEmail || '').replace(/"/g, '""')}"`,
+          `"${(r.userPhone || '').replace(/"/g, '""')}"`,
+          r.competitionId,
+          `"${(r.competitionName || '').replace(/"/g, '""')}"`,
+          `"${(r.note || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`
+        ];
+        csv += row.join(',') + '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `nexus_participations_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('CSV Exported successfully', 'success');
+    }
+
+    // Modal Operations
+    function openAddCompModal() {
+      document.getElementById('addCompModal').style.display = 'flex';
+    }
+
+    function closeAddCompModal() {
+      document.getElementById('addCompModal').style.display = 'none';
+      document.getElementById('newCompForm').reset();
+    }
+
+    async function handleCreateCompetition(e) {
+      e.preventDefault();
+      const name = document.getElementById('newCompName').value.trim();
+      const desc = document.getElementById('newCompDesc').value.trim();
+      const btn = document.getElementById('saveCompBtn');
+
+      if (!name || !desc) {
+        showToast('Please provide both name and description', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Saving...';
+
+      try {
+        await addCompetition(name, desc);
+        showToast(`Competition "${name}" added successfully!`, 'success');
+        closeAddCompModal();
+        await loadAdminData();
+      } catch (err) {
+        console.error('Add competition error:', err);
+        showToast(err.message || 'Error inserting into competitions table', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Save to Database';
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    document.addEventListener('DOMContentLoaded', initAdmin);
+  </script>
+</body>
+</html>

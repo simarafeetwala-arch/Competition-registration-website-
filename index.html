@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Competitions | Premier Tech Arena & Hackathon Portal</title>
+  <meta name="description" content="Discover, apply and compete in premier global technology challenges, hackathons, and innovation arenas.">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- Global Navbar -->
+  <nav class="main-navbar" id="mainNav"></nav>
+
+  <main class="container">
+    <!-- Verification Status Banner (Home Verification) -->
+    <div id="verificationBanner" class="verification-card unregistered" style="display: none;">
+      <div class="verification-info">
+        <h4 id="verifTitle">⚠️ User Verification Required</h4>
+        <p id="verifMsg">You are currently viewing as a guest. Unregistered or unauthenticated users must sign in to apply for competitions.</p>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span id="countdownText" style="font-size: 0.82rem; color: var(--amber); font-weight: 600;"></span>
+        <a href="auth.html?mode=login" id="verifBtn" class="btn btn-primary btn-sm">Sign In / Register</a>
+      </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        <span>2026 Global Innovation Championship Active</span>
+      </div>
+      <h1 class="hero-title">
+        Compete with the Best. <br>
+        <span class="gradient-text">Build the Future.</span>
+      </h1>
+      <p class="hero-subtitle">
+        Nexus is the premier competitive platform for developers, engineers, and visionaries. Explore curated challenges across Artificial Intelligence, Quantum Computing, Cybersecurity, Robotics, and GreenTech.
+      </p>
+
+      <div class="hero-cta-group">
+        <a href="dashboard.html" class="btn btn-primary btn-lg glow-btn" id="heroDashboardBtn">
+          <span>⚡ Enter Competition Dashboard</span>
+        </a>
+        <a href="auth.html?mode=register" class="btn btn-outline btn-lg" id="heroRegisterBtn">
+          <span>Create Free Account</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Platform Stats -->
+    <section class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">12+</div>
+        <div class="stat-label">Active Competitions</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">$350K</div>
+        <div class="stat-label">Total Prize Pool</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">100%</div>
+        <div class="stat-label">Verified Participants</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">48 hrs</div>
+        <div class="stat-label">Fast Application Review</div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section style="margin: 60px 0;">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h2 style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 12px;">How the Competition Works</h2>
+        <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto;">Four simple steps from account verification to submitting your competitive pitch.</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+        <div class="glass-card">
+          <div style="font-size: 2rem; margin-bottom: 16px;">🔑</div>
+          <h3 style="font-size: 1.15rem; color: #fff; margin-bottom: 8px;">1. Verification</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Register an account with your official email and contact number to be verified in the Nexus database.</p>
+        </div>
+        <div class="glass-card">
+          <div style="font-size: 2rem; margin-bottom: 16px;">🔍</div>
+          <h3 style="font-size: 1.15rem; color: #fff; margin-bottom: 8px;">2. Discover & Search</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Browse 10-15 high-impact competitions using the interactive search bar or top-down dropdown list.</p>
+        </div>
+        <div class="glass-card">
+          <div style="font-size: 2rem; margin-bottom: 16px;">📝</div>
+          <h3 style="font-size: 1.15rem; color: #fff; margin-bottom: 8px;">3. Apply with Pitch Note</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Click 'Apply' to redirect to the competition portal, explain your project approach, and record your participation note.</p>
+        </div>
+        <div class="glass-card">
+          <div style="font-size: 2rem; margin-bottom: 16px;">🏆</div>
+          <h3 style="font-size: 1.15rem; color: #fff; margin-bottom: 8px;">4. Admin Review & Awards</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Authorized administrators review all participant notes, judge submissions, and award prizes.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Preview of Featured Competitions -->
+    <section style="margin: 60px 0;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+        <div>
+          <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff;">Featured Arenas</h2>
+          <p style="color: var(--text-muted);">Explore some of our most popular flagship challenges.</p>
+        </div>
+        <a href="dashboard.html" class="btn btn-outline btn-sm">View All 12 Competitions →</a>
+      </div>
+
+      <div id="featuredPreview" class="competitions-grid" style="margin-bottom: 0;">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="container footer-content">
+      <div>
+        <strong>NEXUS COMPETITIONS PLATFORM</strong> — Powered by Supabase Backend
+      </div>
+      <div>
+        <a href="index.html" style="color: var(--text-muted); margin-right: 15px; text-decoration: none;">Home</a>
+        <a href="dashboard.html" style="color: var(--text-muted); margin-right: 15px; text-decoration: none;">Dashboard</a>
+        <a href="admin.html" style="color: var(--text-muted); text-decoration: none;">Admin Access</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/toast.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Initialize Navbar
+      await initNavbar();
+
+      // 2. Verification Check: Check if user is registered/logged in
+      const user = await getCurrentUser();
+      const banner = document.getElementById('verificationBanner');
+      const verifTitle = document.getElementById('verifTitle');
+      const verifMsg = document.getElementById('verifMsg');
+      const verifBtn = document.getElementById('verifBtn');
+      const countdownText = document.getElementById('countdownText');
+
+      if (!user) {
+        // Not registered / not logged in
+        banner.style.display = 'flex';
+        banner.className = 'verification-card unregistered';
+        verifTitle.innerText = '⚠️ Verification Notice: Unregistered Guest';
+        verifMsg.innerText = 'You are currently not signed in. Registered participants can apply for competitions, submit notes, and track application statuses.';
+        verifBtn.innerText = 'Login / Register Now';
+        verifBtn.href = 'auth.html?mode=login';
+
+        // Check if user came with explicit redirect request or automatic redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('requireAuth') === 'true') {
+          let count = 3;
+          countdownText.innerText = `Redirecting to login in ${count}s...`;
+          const timer = setInterval(() => {
+            count--;
+            if (count > 0) {
+              countdownText.innerText = `Redirecting to login in ${count}s...`;
+            } else {
+              clearInterval(timer);
+              window.location.href = 'auth.html?mode=login&redirect=dashboard.html';
+            }
+          }, 1000);
+        }
+      } else {
+        // Verified logged in user
+        const profile = await getUserProfile(user.id);
+        const name = profile ? profile.name : user.email;
+        banner.style.display = 'flex';
+        banner.className = 'verification-card verified';
+        verifTitle.innerHTML = `✓ Verified Participant: <strong>${name}</strong>`;
+        verifMsg.innerText = `Your account is active. You have full access to select competitions and submit applications.`;
+        verifBtn.innerText = 'Go to My Dashboard';
+        verifBtn.href = 'dashboard.html';
+        verifBtn.className = 'btn btn-primary btn-sm';
+      }
+
+      // 3. Load Featured Preview Competitions
+      try {
+        const comps = await getCompetitions();
+        const previewContainer = document.getElementById('featuredPreview');
+        const featured = comps.slice(0, 3);
+
+        previewContainer.innerHTML = featured.map(c => `
+          <div class="comp-card">
+            <div>
+              <div class="comp-header">
+                <span class="comp-id-badge">ID #${c.competition_id}</span>
+                <span class="meta-chip">Open for Application</span>
+              </div>
+              <h3 class="comp-title">${c.competition_name}</h3>
+              <p class="comp-desc">${c.description}</p>
+            </div>
+            <div class="comp-actions">
+              <span style="font-size: 0.85rem; color: var(--cyan); font-weight: 600;">Global Track</span>
+              <a href="competition.html?id=${c.competition_id}" class="btn btn-primary btn-sm">
+                Apply Now →
+              </a>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Featured load error:', err);
+      }
+    });
+  </script>
+</body>
+</html>
